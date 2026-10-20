@@ -340,6 +340,20 @@ form .btn{width:100%;margin-top:6px;padding:16px 22px;font-size:16px}
 .success p{font-family:var(--display);font-size:28px;line-height:1.25;margin:0}
 .card-form .hp{position:absolute;left:-9999px;width:1px;height:1px;opacity:0}
 .field .invalid{border-color:#e3735a}
+fieldset.field{border:0;padding:0;min-width:0}
+fieldset.field legend{font-weight:700;font-size:15px;padding:0;margin-bottom:8px}
+.chips{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
+.chip-opt{position:relative;cursor:pointer}
+.chip-opt input{position:absolute;opacity:0;width:1px;height:1px}
+.chip-opt span{display:flex;align-items:center;justify-content:center;min-height:46px;padding:10px 8px;border-radius:12px;border:1.5px solid rgba(239,232,216,.38);background:rgba(10,18,13,.55);font-weight:500;font-size:15px;text-align:center;transition:border-color .3s var(--ease-out),background-color .3s var(--ease-out),color .3s var(--ease-out)}
+.chip-opt:hover span{border-color:var(--text-primary)}
+.chip-opt input:checked + span{border-color:var(--accent);background:rgba(95,196,180,.16);color:var(--accent-hover)}
+.chip-opt input:focus-visible + span{outline:2px solid var(--accent);outline-offset:3px}
+.contact.invalid .chip-opt span{border-color:#e3735a}
+.contact-hint{display:none;margin:8px 0 0;color:#f0b4a4;font-size:14px}
+.contact.invalid .contact-hint{display:block;animation:ansin .4s var(--ease-out)}
+.email-field{display:none}
+.email-field.on{display:grid;animation:ansin .5s var(--ease-out)}
 form .btn:disabled{opacity:.7;cursor:progress;transform:none}
 .form-err{display:none;margin:14px 0 0;color:#f0b4a4;font-size:15px}
 .form-err a{color:var(--text-primary);font-weight:700}
@@ -676,6 +690,16 @@ body.paused *,body.paused *::before,body.paused *::after{animation-play-state:pa
             <div class="field"><label for="f-name">Name</label><input id="f-name" name="name" autocomplete="name" required></div>
             <div class="field"><label for="f-phone">Phone</label><input id="f-phone" name="phone" type="tel" autocomplete="tel" required></div>
           </div>
+          <fieldset class="field contact">
+            <legend>How should we reach you?</legend>
+            <div class="chips">
+              <label class="chip-opt"><input type="radio" name="contact_method" value="Text" required><span>Text</span></label>
+              <label class="chip-opt"><input type="radio" name="contact_method" value="Phone call"><span>Phone call</span></label>
+              <label class="chip-opt"><input type="radio" name="contact_method" value="Email"><span>Email</span></label>
+            </div>
+            <p class="contact-hint" role="alert">Pick one so Fernando knows how to reach you.</p>
+          </fieldset>
+          <div class="field email-field"><label for="f-email">Email</label><input id="f-email" name="email" type="email" autocomplete="email" placeholder="you@example.com" disabled></div>
           <div class="field"><label for="f-need">What do you need?</label>
             <select id="f-need" name="need">
               <option>Sprinkler or irrigation repair</option>
@@ -1007,8 +1031,9 @@ body.paused *,body.paused *::before,body.paused *::after{animation-play-state:pa
     e.preventDefault();
     if (sending) return;
     form.classList.remove('err');
-    const bad = $$('[required]', form).find(i => !i.value.trim());
+    const bad = $$('input[required]:not([type=radio]):not(:disabled)', form).find(i => !i.value.trim() || !i.checkValidity());
     if (bad) { bad.focus(); bad.classList.add('invalid'); return; }
+    if (!form.elements.contact_method.value) { contactSet.classList.add('invalid'); $('input[type=radio]', contactSet).focus(); return; }
     const key = form.elements.access_key.value;
     if (!key || key.startsWith('YOUR_')) { console.info('Form demo mode: add the Web3Forms access key to send for real.'); form.classList.add('sent'); return; }
     sending = true; formBtn.disabled = true; btnT.textContent = 'Sending...';
@@ -1024,7 +1049,17 @@ body.paused *,body.paused *::before,body.paused *::after{animation-play-state:pa
       sending = false; formBtn.disabled = false; btnT.textContent = 'Send my request';
     }
   });
-  $$('[required]', form).forEach(i => i.addEventListener('input', () => i.classList.remove('invalid')));
+  $$('input', form).forEach(i => i.addEventListener('input', () => i.classList.remove('invalid')));
+  // preferred contact method: Email reveals a required email field
+  const contactSet = $('.contact', form), emailField = $('.email-field', form), emailInput = $('#f-email');
+  $$('input[name=contact_method]', form).forEach(r => r.addEventListener('change', () => {
+    contactSet.classList.remove('invalid');
+    const wantsEmail = form.elements.contact_method.value === 'Email';
+    emailField.classList.toggle('on', wantsEmail);
+    emailInput.disabled = !wantsEmail;
+    emailInput.required = wantsEmail;
+    if (!wantsEmail) emailInput.classList.remove('invalid');
+  }));
 
   /* ---------- boot ---------- */
   function boot() {
